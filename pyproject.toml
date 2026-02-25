@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neostem"
+version = "1.0.0"
+description = "NEO STEM - Ung dung giao duc STEM tuong tac cho hoc sinh Viet Nam (Lop 3-9)"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "Binh Dan Hoc STEM & Robot"},
+]
+keywords = ["stem", "education", "vietnam", "qt6", "children"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Education",
+    "Topic :: Education",
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+]
+
+[project.scripts]
+neostem = "neostem_cli.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/tuanln/NEO_STEM"
+
+[tool.setuptools]
+packages = ["neostem_cli"]
+
+[tool.setuptools.package-data]
+neostem_cli = ["../src/**/*", "../CMakeLists.txt", "../translations/**/*", "../install-armbian.sh"]

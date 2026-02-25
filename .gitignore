@@ -1,0 +1,9 @@
+build/
+*.o
+*.o.d
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+.DS_Store
+neostem.sh

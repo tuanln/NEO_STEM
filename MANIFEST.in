@@ -1,0 +1,5 @@
+include CMakeLists.txt
+include install-armbian.sh
+include ARCHITECTURE.md
+recursive-include src *.qml *.cpp *.h
+recursive-include translations *.ts
