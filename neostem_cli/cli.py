@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""NEO STEM CLI - Cai dat va chay ung dung NEO STEM tren Linux ARM."""
+"""NEO STEM CLI - Cai dat va chay ung dung NEO STEM tren Linux (x86_64, ARM64) va macOS."""
 
 import argparse
 import os

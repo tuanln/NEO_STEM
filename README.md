@@ -4,28 +4,28 @@ Ung dung giao duc STEM tuong tac cho hoc sinh Viet Nam (Lop 3-9).
 
 20 hien tuong khoa hoc tu doi song thuong ngay, hoc qua 5 buoc: Hien tuong - Cau hoi - Thi nghiem - Mo hinh - Thach thuc.
 
-## Cai dat nhanh (Linux ARM / Armbian)
+## Cai dat nhanh
 
 ```bash
-# Cach 1: Qua pip (khuyen nghi)
-pip install git+https://github.com/<username>/NEO_STEM.git
-neostem install
-neostem run
+# Buoc 1: Cai CLI
+pip install git+https://github.com/tuanln/NEO_STEM.git
 
-# Cach 2: Thu cong
-git clone https://github.com/<username>/NEO_STEM.git
-cd NEO_STEM
-bash install-armbian.sh
-./neostem.sh
+# Buoc 2: Cai Qt6 + build tu source (tu dong)
+neostem install
+
+# Buoc 3: Chay
+neostem run
 ```
 
-## Cai dat tren macOS (Development)
+Hoat dong tren: **Linux x86_64**, **Linux ARM64 (Armbian)**, **macOS**.
+
+### Cai dat thu cong (khong can pip)
 
 ```bash
-brew install qt@6 cmake
-pip install -e .
-neostem install
-neostem run
+git clone https://github.com/tuanln/NEO_STEM.git
+cd NEO_STEM
+bash install-armbian.sh   # Linux
+# hoac: brew install qt@6 && mkdir build && cd build && cmake .. && make  # macOS
 ```
 
 ## Lenh CLI
@@ -39,10 +39,13 @@ neostem run
 
 ## Yeu cau he thong
 
-- **CPU:** ARM aarch64 hoac x86_64
-- **RAM:** 2GB+ (tu dong tao swap neu can)
-- **OS:** Armbian Bookworm / Ubuntu 22.04+ / macOS
-- **Display:** HDMI, LCD touchscreen, hoac X11/Wayland
+| Platform | OS | CPU | RAM |
+|----------|-----|-----|-----|
+| Linux x86_64 | Ubuntu 22.04+ / Debian 12+ | Intel/AMD 64-bit | 2GB+ |
+| Linux ARM64 | Armbian Bookworm / Ubuntu 22.04+ | Cortex-A53+ | 2GB+ |
+| macOS | macOS 13+ | Apple Silicon / Intel | 4GB+ |
+
+- **Display:** HDMI, LCD touchscreen, X11, Wayland, hoac Framebuffer
 
 ## Cong nghe
 
