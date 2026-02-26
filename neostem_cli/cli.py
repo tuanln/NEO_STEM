@@ -9,10 +9,28 @@ import subprocess
 import sys
 from pathlib import Path
 
+REPO_URL = "https://github.com/tuanln/NEO_STEM.git"
+APP_HOME = Path.home() / ".neostem"
+SOURCE_DIR = APP_HOME / "NEO_STEM"
+
 
 def get_project_dir():
-    """Tra ve thu muc goc cua du an (chua CMakeLists.txt)."""
-    return Path(__file__).resolve().parent.parent
+    """Tra ve thu muc chua source code (CMakeLists.txt).
+
+    Uu tien:
+    1. Thu muc hien tai neu co CMakeLists.txt (dev mode)
+    2. Thu muc ~/.neostem/NEO_STEM (pip install mode)
+    """
+    # Dev mode: chay tu source repo truc tiep
+    local = Path(__file__).resolve().parent.parent
+    if (local / "CMakeLists.txt").exists():
+        return local
+
+    # Pip install mode: source duoc clone ve ~/.neostem/NEO_STEM
+    if (SOURCE_DIR / "CMakeLists.txt").exists():
+        return SOURCE_DIR
+
+    return SOURCE_DIR  # se duoc clone trong cmd_install
 
 
 def get_build_dir():
@@ -27,11 +45,11 @@ def get_binary():
 # Colors
 # ---------------------------------------------------------------------------
 class C:
-    G = "\033[92m"  # green
-    Y = "\033[93m"  # yellow
-    R = "\033[91m"  # red
-    B = "\033[94m"  # blue
-    N = "\033[0m"   # reset
+    G = "\033[92m"
+    Y = "\033[93m"
+    R = "\033[91m"
+    B = "\033[94m"
+    N = "\033[0m"
 
 
 def info(msg):
@@ -51,46 +69,58 @@ def step(msg):
 
 
 def run(cmd, **kwargs):
-    """Chay shell command, in output realtime."""
     print(f"  $ {cmd}")
     return subprocess.run(cmd, shell=True, **kwargs)
+
+
+# ---------------------------------------------------------------------------
+# clone / update source
+# ---------------------------------------------------------------------------
+def ensure_source():
+    """Clone hoac update source code tu GitHub."""
+    APP_HOME.mkdir(parents=True, exist_ok=True)
+
+    if (SOURCE_DIR / "CMakeLists.txt").exists():
+        info(f"Source da co tai {SOURCE_DIR}")
+        step("Cap nhat source tu GitHub")
+        r = run("git pull --ff-only", cwd=SOURCE_DIR)
+        if r.returncode != 0:
+            warn("Khong the cap nhat. Dung ban hien tai.")
+        return SOURCE_DIR
+
+    step("Tai source code tu GitHub")
+    info(f"Clone {REPO_URL}")
+    r = run(f"git clone --depth 1 {REPO_URL} {SOURCE_DIR}")
+    if r.returncode != 0:
+        error("Khong the clone repo! Kiem tra internet va git.")
+        sys.exit(1)
+
+    info(f"Source da tai ve: {SOURCE_DIR}")
+    return SOURCE_DIR
 
 
 # ---------------------------------------------------------------------------
 # install
 # ---------------------------------------------------------------------------
 DEBIAN_PACKAGES = [
-    # build tools
     "cmake", "g++", "make", "pkg-config",
-    # Qt6 core
     "qt6-base-dev", "qt6-declarative-dev", "qt6-multimedia-dev",
-    # QML modules
     "qml6-module-qtquick", "qml6-module-qtquick-controls",
     "qml6-module-qtquick-layouts", "qml6-module-qtquick-window",
     "qml6-module-qt-labs-localstorage",
-    # Qt6 libs
     "libqt6sql6-sqlite", "libqt6multimedia6", "qt6-qml-dev",
-    # fonts & display
     "fonts-noto-sans", "fonts-noto-color-emoji",
     "libgl1-mesa-dev", "libegl1-mesa-dev",
 ]
 
 
 def _check_dpkg(pkg):
-    r = subprocess.run(
-        ["dpkg", "-s", pkg],
-        capture_output=True, text=True,
-    )
+    r = subprocess.run(["dpkg", "-s", pkg], capture_output=True, text=True)
     return r.returncode == 0
 
 
 def cmd_install(args):
     """Cai dat dependencies va build ung dung."""
-    proj = get_project_dir()
-    if not (proj / "CMakeLists.txt").exists():
-        error(f"Khong tim thay CMakeLists.txt tai {proj}")
-        sys.exit(1)
-
     # --- system info ---
     step("Kiem tra he thong")
     arch = platform.machine()
@@ -98,12 +128,15 @@ def cmd_install(args):
     info(f"OS: {platform.platform()}")
 
     if sys.platform == "darwin":
-        _install_macos(proj, args)
+        _install_macos(args)
         return
 
     if sys.platform != "linux":
         error(f"Chua ho tro platform: {sys.platform}")
         sys.exit(1)
+
+    # --- source ---
+    proj = ensure_source()
 
     # --- swap ---
     _ensure_swap()
@@ -118,29 +151,32 @@ def cmd_install(args):
         info(f"Cai {len(missing)} goi...")
         r = run(f"sudo apt install -y {pkgs}")
         if r.returncode != 0:
-            warn("Mot so goi co the khong co trong repo.")
-            warn("Thu cai tung goi hoac dung backports.")
+            warn("Mot so goi co the khong co. Thu backports.")
     else:
         info("Tat ca dependencies da co san")
 
     # --- build ---
     _build(proj, jobs=args.jobs)
 
-    # --- launcher ---
-    _create_launcher(proj)
-
+    # --- done ---
     print(f"\n{C.G}{'='*50}")
     print(f"  CAI DAT HOAN TAT!")
     print(f"  Chay: neostem run")
     print(f"{'='*50}{C.N}\n")
 
 
-def _install_macos(proj, args):
-    """Build tren macOS (dev mode)."""
+def _install_macos(args):
+    """Build tren macOS."""
+    # Dev mode: source local
+    local = Path(__file__).resolve().parent.parent
+    if (local / "CMakeLists.txt").exists():
+        proj = local
+    else:
+        proj = ensure_source()
+
     step("Build tren macOS")
     qt_prefix = subprocess.run(
-        ["brew", "--prefix", "qt@6"],
-        capture_output=True, text=True,
+        ["brew", "--prefix", "qt@6"], capture_output=True, text=True,
     ).stdout.strip()
 
     if not qt_prefix:
@@ -152,11 +188,8 @@ def _install_macos(proj, args):
 
 
 def _ensure_swap():
-    """Tao swap neu chua co."""
     try:
-        out = subprocess.run(
-            ["free", "-m"], capture_output=True, text=True
-        ).stdout
+        out = subprocess.run(["free", "-m"], capture_output=True, text=True).stdout
         for line in out.splitlines():
             if line.startswith("Swap:"):
                 swap_mb = int(line.split()[1])
@@ -173,12 +206,10 @@ def _ensure_swap():
 
 
 def _build(proj, cmake_args="", jobs=None):
-    """Chay cmake + make."""
     step("Build NEO STEM")
     build = proj / "build"
     build.mkdir(exist_ok=True)
 
-    # Determine jobs
     if jobs is None:
         try:
             mem = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") // (1024**2)
@@ -186,11 +217,8 @@ def _build(proj, cmake_args="", jobs=None):
         except Exception:
             jobs = 1
 
-    info(f"CMake configure...")
-    r = run(
-        f"cmake {proj} -DCMAKE_BUILD_TYPE=Release {cmake_args}",
-        cwd=build,
-    )
+    info("CMake configure...")
+    r = run(f"cmake {proj} -DCMAKE_BUILD_TYPE=Release {cmake_args}", cwd=build)
     if r.returncode != 0:
         error("CMake configure that bai!")
         sys.exit(1)
@@ -208,32 +236,6 @@ def _build(proj, cmake_args="", jobs=None):
     else:
         error("Khong tim thay binary sau khi build")
         sys.exit(1)
-
-
-def _create_launcher(proj):
-    """Tao script launcher."""
-    launcher = proj / "neostem.sh"
-    launcher.write_text("""\
-#!/bin/bash
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BINARY="$SCRIPT_DIR/build/neostem"
-
-if [ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ]; then
-    [ -n "$WAYLAND_DISPLAY" ] && export QT_QPA_PLATFORM=wayland || export QT_QPA_PLATFORM=xcb
-elif [ -e /dev/dri/card0 ]; then
-    export QT_QPA_PLATFORM=eglfs
-else
-    export QT_QPA_PLATFORM=linuxfb
-fi
-
-export QSG_RENDER_LOOP=basic
-export QML_DISK_CACHE_PATH=/tmp/neostem_qmlcache
-[ ! -e /dev/dri/card0 ] && export QT_QUICK_BACKEND=software
-
-echo "[NEO STEM] Platform: $QT_QPA_PLATFORM"
-exec "$BINARY" "$@"
-""")
-    launcher.chmod(0o755)
 
 
 # ---------------------------------------------------------------------------
@@ -264,10 +266,9 @@ def cmd_run(args):
     env.setdefault("QSG_RENDER_LOOP", "basic")
     env.setdefault("QML_DISK_CACHE_PATH", "/tmp/neostem_qmlcache")
 
-    platform_name = env.get("QT_QPA_PLATFORM", "auto")
-    info(f"Platform: {platform_name}")
+    pname = env.get("QT_QPA_PLATFORM", "auto")
+    info(f"Platform: {pname}")
     info("Dang khoi chay NEO STEM...")
-
     os.execve(str(binary), [str(binary)], env)
 
 
@@ -275,23 +276,21 @@ def cmd_run(args):
 # status
 # ---------------------------------------------------------------------------
 def cmd_status(args):
-    """Hien thi trang thai cai dat."""
     proj = get_project_dir()
     binary = get_binary()
 
     print(f"\n  NEO STEM v1.0.0")
     print(f"  {'='*40}")
-    print(f"  Thu muc:  {proj}")
+    print(f"  Source:   {proj}")
+    print(f"  Co source: {'CO' if (proj / 'CMakeLists.txt').exists() else 'CHUA (chay: neostem install)'}")
     print(f"  Binary:   {'CO' if binary.exists() else 'CHUA BUILD'}")
 
     if binary.exists():
         size = binary.stat().st_size / (1024 * 1024)
         print(f"  Kich thuoc: {size:.1f} MB")
 
-    # Check Qt6
     qt = shutil.which("qmake6")
     print(f"  Qt6:      {'CO (' + qt + ')' if qt else 'CHUA CAI'}")
-
     print(f"  Platform: {sys.platform}")
     print(f"  Arch:     {platform.machine()}")
 
@@ -304,7 +303,6 @@ def cmd_status(args):
                 print(f"  Swap:     {line.split()[1]} MB")
     except Exception:
         pass
-
     print()
 
 
@@ -312,7 +310,6 @@ def cmd_status(args):
 # uninstall
 # ---------------------------------------------------------------------------
 def cmd_uninstall(args):
-    """Go bo build artifacts."""
     build = get_build_dir()
     if build.exists():
         info(f"Xoa {build}...")
@@ -332,17 +329,11 @@ def main():
     )
     sub = parser.add_subparsers(dest="command", help="Lenh")
 
-    # install
-    p_install = sub.add_parser("install", help="Cai dat dependencies va build")
+    p_install = sub.add_parser("install", help="Cai dat: clone source + Qt6 deps + build")
     p_install.add_argument("-j", "--jobs", type=int, default=None, help="So luong build jobs")
 
-    # run
     sub.add_parser("run", help="Chay ung dung")
-
-    # status
     sub.add_parser("status", help="Hien thi trang thai")
-
-    # uninstall
     sub.add_parser("uninstall", help="Xoa build artifacts")
 
     args = parser.parse_args()
@@ -359,7 +350,7 @@ def main():
     else:
         parser.print_help()
         print(f"\n  Bat dau nhanh:")
-        print(f"    neostem install   # Cai dat & build")
+        print(f"    neostem install   # Clone source + cai Qt6 + build")
         print(f"    neostem run       # Chay ung dung")
         print(f"    neostem status    # Kiem tra trang thai")
         print()
