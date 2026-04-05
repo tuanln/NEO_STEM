@@ -1,8 +1,8 @@
 # NEO STEM - Tài liệu Kiến trúc & Hướng dẫn Triển khai
 
-> **Phiên bản:** 1.0.0
+> **Phiên bản:** 1.1.0
 > **Tổ chức:** Bình Dân Học STEM & Robot
-> **Ngày cập nhật:** 2026-02-23
+> **Ngày cập nhật:** 2026-04-05
 
 ---
 
@@ -76,7 +76,7 @@ NEO_STEM/
 │   │   ├── InvestigationBase.qml   # Bước 3: Khung thí nghiệm
 │   │   ├── ModelBuilder.qml        # Bước 4: Drag-drop mô hình
 │   │   ├── ProblematizeChallenge.qml # Bước 5: Trắc nghiệm thách thức
-│   │   ├── TouchButton.qml         # Nút bấm tối ưu cảm ứng (48px+)
+│   │   ├── TouchButton.qml         # Nút bấm tối ưu cảm ứng (52px+)
 │   │   ├── DragItem.qml            # Item kéo-thả
 │   │   ├── DropZone.qml            # Vùng thả
 │   │   ├── ParticleEffects.qml     # Hiệu ứng hạt (bọt, hơi, lấp lánh)
@@ -150,7 +150,8 @@ NEO_STEM/
 │  ├─ questions[20]      ├─ getProgress()     ├─ unlock()  │
 │  ├─ badges[29]         ├─ getTotalStars()   └─ icons     │
 │  ├─ stepNames[5]       ├─ saveDQBNote()                  │
-│  └─ typography         └─ resetAll()                     │
+│  ├─ typography         └─ resetAll()                     │
+│  └─ largeTextMode                                        │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -293,7 +294,88 @@ CREATE TABLE dqb_state (
 
 ---
 
-## 8. Hướng dẫn Build trên macOS (Development)
+## 8. Design System — Giao diện thân thiện trẻ em
+
+Toàn bộ design tokens được quản lý tập trung trong `NeoConstants.qml` (Singleton).
+
+### 8.1 Typography
+
+Hỗ trợ **2 chế độ**: Bình thường và Chữ lớn (+25%), bật trong Cài đặt.
+
+| Token | Bình thường | Chữ lớn | Dùng cho |
+|-------|:-----------:|:-------:|----------|
+| `fontTitle` | 36px | 45px | Tiêu đề trang |
+| `fontBody` | 24px | 30px | Nội dung chính, narrative |
+| `fontButton` | 24px | 30px | Văn bản nút bấm |
+| `fontCaption` | 18px | 23px | Chú thích, nhãn phụ |
+| `fontSmall` | 16px | 20px | Nhãn nhỏ nhất (không dùng nhỏ hơn) |
+
+**Quy tắc:** Không hardcode font size. Luôn dùng `NeoConstants.fontXxx`.
+
+**Chế độ Chữ lớn:**
+```qml
+// NeoConstants.qml
+property bool largeTextMode: false
+readonly property real textScale: largeTextMode ? 1.25 : 1.0
+readonly property int fontBody: Math.round(24 * textScale)
+```
+
+### 8.2 Touch Targets
+
+| Token | Bình thường | Chữ lớn | Mô tả |
+|-------|:-----------:|:-------:|-------|
+| `touchMin` | 52px | 60px | Kích thước tối thiểu phần tử tương tác |
+| `buttonHeight` | 60px | 68px | Chiều cao nút bấm chuẩn |
+| `dragItemSize` | 72px | 84px | Kích thước mảnh kéo-thả |
+
+### 8.3 Bảng màu
+
+**Màu chính:**
+| Tên | Hex | Dùng cho |
+|-----|-----|----------|
+| Forest Green | `#2E7D32` | Brand, header, primary action |
+| Ocean Blue | `#1565C0` | Navigation, secondary |
+| Warm Orange | `#FF8F00` | Accent, call-to-action, help |
+| Sunshine | `#FFD600` | Sao, thành tích, highlight |
+| Rice Paper | `#FFF8E1` | Background chính |
+
+**Màu 5 bước:**
+| Bước | Tên | Hex |
+|------|-----|-----|
+| 1 - Hiện tượng | Coral | `#FF7043` |
+| 2 - Câu hỏi | Amber | `#FFB300` |
+| 3 - Thí nghiệm | Teal | `#26A69A` |
+| 4 - Mô hình | Indigo | `#5C6BC0` |
+| 5 - Thách thức | Purple | `#AB47BC` |
+
+### 8.4 Icon & Navigation
+
+Sử dụng emoji trực quan thay vì ký hiệu trừu tượng:
+
+| Chức năng | Icon | Ghi chú |
+|-----------|------|---------|
+| Trang chủ | 🏠 | Thay thế ⌂ |
+| Quay lại | ⬅ | Thay thế ◄ |
+| Trợ giúp | 💡 | Thay thế ? |
+| Hồ sơ | 📊 | Kèm text label |
+| Cài đặt | ⚙️ | Kèm text label |
+
+### 8.5 Animation
+
+| Token | Thời gian | Dùng cho |
+|-------|-----------|----------|
+| `animFast` | 200ms | Phản hồi nhanh (bấm nút, đổi màu) |
+| `animNormal` | 400ms | Chuyển cảnh, transition |
+| `animSlow` | 800ms | Hiệu ứng nhấn mạnh (pulsing) |
+
+**Pattern tương tác:**
+- Nút bấm: scale 0.92x khi nhấn
+- Kéo-thả: scale 1.15x khi giữ
+- Card chưa hoàn thành: pulse 1.0→1.06 (loop)
+
+---
+
+## 9. Hướng dẫn Build trên macOS (Development)
 
 ### Yêu cầu
 
@@ -322,7 +404,7 @@ make -j$(sysctl -n hw.ncpu)
 
 ---
 
-## 9. Triển khai trên Linux Armbian (ARM, 2GB RAM)
+## 10. Triển khai trên Linux Armbian (ARM, 2GB RAM)
 
 ### 9.1 Yêu cầu phần cứng tối thiểu
 
@@ -537,7 +619,7 @@ export QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS=/dev/input/eventX
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 ### Lỗi thường gặp trên Armbian
 
@@ -574,7 +656,7 @@ qml6 /tmp/test.qml
 
 ---
 
-## 11. Thông số hiệu năng dự kiến
+## 12. Thông số hiệu năng dự kiến
 
 | Thông số            | macOS (M1)   | Armbian ARM (2GB) |
 |---------------------|--------------|-------------------|
@@ -586,7 +668,7 @@ qml6 /tmp/test.qml
 
 ---
 
-## 12. Đường dẫn dữ liệu
+## 13. Đường dẫn dữ liệu
 
 | Platform | Đường dẫn DB |
 |----------|-------------|
@@ -596,7 +678,7 @@ qml6 /tmp/test.qml
 
 ---
 
-## 13. License & Credits
+## 14. License & Credits
 
 - **Phát triển:** Bình Dân Học STEM & Robot
 - **Framework:** Qt 6 (LGPL v3 / Commercial)
